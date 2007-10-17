@@ -9,7 +9,7 @@ URL:            http://freej.org/
 Source0:        ftp://ftp.dyne.org/freej/releases/%{name}-%{version}.tar.gz
 Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  SDL-devel slang-devel libshout-devel
 #BuildRequires: jack-audio-connection-kit-devel 
