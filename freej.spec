@@ -11,10 +11,11 @@ Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  SDL-devel slang-devel 
+BuildRequires:  SDL-devel slang-devel libshout-devel
 #BuildRequires: jack-audio-connection-kit-devel 
-BuildRequires: libogg-devel
+BuildRequires: libogg-devel freetype2-devel
 BuildRequires:  libpng-devel libjpeg-devel directfb-devel
+ExclusiveArch:  %{ix86}
 
 %description
 FreeJ is a vision mixer: a digital instrument for realtime video
