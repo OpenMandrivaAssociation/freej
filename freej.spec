@@ -1,6 +1,6 @@
 Name:           freej
 Version:        0.9
-Release:        %mkrel 1
+Release:        %mkrel 2
 Summary:        FreeJ is a vision mixer
 
 Group:          Video
@@ -9,6 +9,8 @@ URL:            http://freej.org/
 Source0:        ftp://ftp.dyne.org/freej/releases/%{name}-%{version}.tar.gz
 Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
+# (fc) 0.9-2mdv V4L2 support (Arnaud Patard)
+Patch1:		freej-0.9-v4l2.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  SDL-devel slang-devel libshout-devel
@@ -36,6 +38,7 @@ via javascript and operated via MIDI and Joystick.
 %prep
 %setup -q -n %{name}-%{version}
 %patch0 -p1 -b .slang
+%patch1 -p1 -b .v4l2
 
 autoreconf -i
 
