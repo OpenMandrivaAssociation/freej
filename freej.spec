@@ -11,7 +11,6 @@ Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
 # (fc) 0.9-2mdv V4L2 support (Arnaud Patard)
 Patch1:		freej-0.9-v4l2.patch
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  SDL-devel slang-devel libshout-devel
 #BuildRequires: jack-audio-connection-kit-devel 
