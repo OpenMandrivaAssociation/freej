@@ -1,7 +1,7 @@
 Name:           freej
 Version:        0.9
 Release:        %mkrel 2
-Summary:        FreeJ is a vision mixer
+Summary:        Vision mixer
 
 Group:          Video
 License:        GPL
