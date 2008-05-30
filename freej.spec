@@ -18,7 +18,6 @@ BuildRequires:  SDL-devel slang-devel libshout-devel
 #BuildRequires: jack-audio-connection-kit-devel 
 BuildRequires: libogg-devel freetype2-devel
 BuildRequires:  libpng-devel libjpeg-devel directfb-devel
-ExclusiveArch:  %{ix86}
 
 %description
 FreeJ is a vision mixer: a digital instrument for realtime video
@@ -79,8 +78,8 @@ rm -rf %{buildroot}
 %doc API AUTHORS COPYING NEWS README TODO USAGE doc/*
 %{_bindir}/%{name}
 %{_includedir}/%{name}*.h
-%{_libdir}/%{name}/*.la
-%{_libdir}/%{name}/*.so
+%{_prefix}/lib/%{name}/*.la
+%{_prefix}/lib/%{name}/*.so
 %{_datadir}/%{name}/*
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/ipernav.png
