@@ -1,6 +1,6 @@
 Name:           freej
-Version:        0.9
-Release:        %mkrel 3
+Version:        0.10
+Release:        %mkrel 1
 Summary:        Vision mixer
 
 Group:          Video
@@ -11,6 +11,7 @@ Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
 # (fc) 0.9-2mdv V4L2 support (Arnaud Patard)
 Patch1:		freej-0.9-v4l2.patch
+Patch2:		freej-0.10-new-ffmpeg-header-location.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  SDL-devel slang-devel libshout-devel
@@ -37,16 +38,14 @@ via javascript and operated via MIDI and Joystick.
 
 %prep
 %setup -q -n %{name}-%{version}
-%patch0 -p1 -b .slang
-%patch1 -p1 -b .v4l2
-
-autoreconf -i
-
+#%patch0 -p1 -b .slang
+#%patch1 -p1 -b .v4l2
+%patch2 -p0
 
 %build
-%configure2_5x --enable-joystick --enable-v4l --enable-jack
-%make 
-
+autoreconf -i
+%configure2_5x
+make 
 
 %install
 rm -rf %{buildroot}
@@ -69,7 +68,7 @@ EOF
 sed -i -e 's,/usr/local/bin,/usr/bin,g' $RPM_BUILD_ROOT%{_datadir}/freej/pan.js doc/freejscript-example.js
 
 # remove unpackaged files
-rm -rf $RPM_BUILD_ROOT%{_prefix}/doc
+rm -rf %buildroot%_datadir/doc/
 
 
 %clean
