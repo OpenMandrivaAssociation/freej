@@ -15,9 +15,9 @@ Patch2:		freej-0.10-new-ffmpeg-header-location.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:  SDL-devel slang-devel libshout-devel
-#BuildRequires: jack-audio-connection-kit-devel 
-BuildRequires: libogg-devel freetype2-devel
-BuildRequires:  libpng-devel libjpeg-devel directfb-devel
+BuildRequires:	libogg-devel freetype2-devel
+BuildRequires:  libpng-devel libjpeg-devel
+BuildRequires:	ffmpeg-devel fftw3-devel bluez-devel jackit-devel
 
 %description
 FreeJ is a vision mixer: a digital instrument for realtime video
