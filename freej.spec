@@ -1,6 +1,6 @@
 Name:           freej
 Version:        0.10
-Release:        %mkrel 1
+Release:        %mkrel 2
 Summary:        Vision mixer
 
 Group:          Video
