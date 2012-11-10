@@ -1,0 +1,13 @@
+--- src/include/video_layer.h~	2008-05-30 10:58:59.000000000 +0200
++++ src/include/video_layer.h	2008-05-30 17:11:00.000000000 +0200
+@@ -19,8 +19,8 @@
+ #ifndef __avcodec_h__
+ #define __avcodec_h__
+ extern "C" {
+-#include <ffmpeg/avcodec.h>
+-#include <ffmpeg/avformat.h>
++#include <libavcodec/avcodec.h>
++#include <libavformat/avformat.h>
+ }
+ #include <layer.h>
+ #define INBUF_SIZE 4096

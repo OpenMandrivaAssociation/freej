@@ -1,0 +1,20 @@
+--- freej-0.9/lib/slw/Makefile.am.slang	2007-10-16 16:34:40.000000000 +0200
++++ freej-0.9/lib/slw/Makefile.am	2007-10-16 16:34:50.000000000 +0200
+@@ -1,6 +1,6 @@
+ # s-lang widgets
+ 
+-INCLUDES = -I$(top_srcdir)/src/include
++INCLUDES = -I$(top_srcdir)/src/include -I/usr/include/slang
+ 
+ AUTOMAKE_OPTIONS = foreign
+ 
+--- freej-0.9/lib/tbt/Makefile.am.slang	2007-09-01 20:21:15.000000000 +0200
++++ freej-0.9/lib/tbt/Makefile.am	2007-10-16 16:34:15.000000000 +0200
+@@ -1,6 +1,6 @@
+ # time based text
+ 
+-INCLUDES = -I$(top_srcdir)/src/include
++INCLUDES = -I$(top_srcdir)/src/include -I/usr/include/slang
+ 
+ AUTOMAKE_OPTIONS = foreign
+ 

@@ -1,0 +1,711 @@
+--- freej-0.9/src/include/impl_layers.h.v4l2	2007-09-01 20:21:17.000000000 +0200
++++ freej-0.9/src/include/impl_layers.h	2007-10-25 14:08:28.000000000 +0200
+@@ -38,6 +38,7 @@
+ 
+ #ifdef WITH_V4L
+ #include <v4l_layer.h>
++#include <v4l2_layer.h>
+ #endif
+ 
+ #ifdef WITH_AVIFILE
+--- freej-0.9/src/include/jsparser_data.h.v4l2	2007-09-01 20:21:17.000000000 +0200
++++ freej-0.9/src/include/jsparser_data.h	2007-10-25 14:08:28.000000000 +0200
+@@ -60,6 +60,7 @@ JS(goom_layer_constructor);
+ 
+ #ifdef WITH_V4L
+ JS(v4l_layer_constructor);
++JS(v4l2_layer_constructor);
+ #endif
+ #ifdef WITH_AVCODEC
+ JS(video_layer_constructor);
+@@ -142,7 +143,9 @@ extern JSFunctionSpec goom_layer_methods
+ // CamLayer
+ #ifdef WITH_V4L
+ extern JSClass v4l_layer_class;
++extern JSClass v4l2_layer_class;
+ extern JSFunctionSpec v4l_layer_methods[];
++extern JSFunctionSpec v4l2_layer_methods[];
+ #endif
+ 
+ // TextLayer
+@@ -332,6 +335,9 @@ JS(goom_layer_noise);
+ JS(v4l_layer_chan);
+ JS(v4l_layer_band);
+ JS(v4l_layer_freq);
++JS(v4l2_layer_chan);
++JS(v4l2_layer_band);
++JS(v4l2_layer_freq);
+ #endif
+ 
+ #ifdef WITH_AVCODEC
+--- freej-0.9/src/include/v4l2_layer.h.v4l2	2007-10-25 14:08:28.000000000 +0200
++++ freej-0.9/src/include/v4l2_layer.h	2007-10-25 14:16:56.000000000 +0200
+@@ -0,0 +1,91 @@
++/*  FreeJ
++ *  (c) Copyright 2001 Denis Roio aka jaromil <jaromil@dyne.org>
++ *                     2007 Arnaud Patard <apatard@mandriva.com>
++ *
++ * This source code is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Public License as published
++ * by the Free Software Foundation; either version 2 of the License,
++ * or (at your option) any later version.
++ *
++ * This source code is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * Please refer to the GNU Public License for more details.
++ *
++ * You should have received a copy of the GNU Public License along with
++ * this source code; if not, write to:
++ * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef __v4l2_h__
++#define __v4l2_h__
++
++/* this to avoid g++ complaining about videodev.h */
++typedef unsigned long int ulong;
++
++
++#include <linux/types.h>
++#include <linux/videodev.h>
++#include <context.h>
++
++
++#define BUF_COUNT	32
++
++struct buffer {
++	void *                  start;
++	size_t                  length;
++};
++
++class V4l2Grabber: public Layer {
++ private:
++  int dev;
++  int input;
++  int norm;
++  int _band;
++  int _freq;
++  uint32_t palette;
++
++  struct v4l2_capability grab_cap;
++  struct v4l2_format fmt;
++
++  struct v4l2_buffer buf;
++  struct v4l2_requestbuffers reqbuf;
++  struct buffer buffers[BUF_COUNT];
++
++  struct video_channel grab_chan;
++  struct video_picture grab_pic;
++  struct video_tuner grab_tuner;
++
++  bool grab24;
++  bool have_tuner;
++  //int minw, minh, maxw, maxh;
++  int channels;
++
++  void *get_buffer();
++
++  /* yuv2rgb conversion routine pointer
++     this is returned by yuv2rgb_init */
++  //  yuv2rgb_fun *yuv2rgb;
++  void *rgb_surface;
++  //  int u,v;  uv offset */
++
++  void print_err(char *ioctl, int res);
++ public:
++  V4l2Grabber();
++  ~V4l2Grabber();
++  bool open(char *devfile);
++  bool init(Context *freej);
++  bool init(Context *freej, int width, int height);
++  int width, height;
++  void *feed();
++  void close();
++
++  void set_chan(int ch);
++  void set_band(int b);
++  void set_freq(int f);
++  bool keypress(int key);
++
++  unsigned char *buffer;
++};
++
++#endif
+--- freej-0.9/src/impl_layers.cpp.v4l2	2007-09-01 20:21:16.000000000 +0200
++++ freej-0.9/src/impl_layers.cpp	2007-10-25 14:08:28.000000000 +0200
+@@ -95,19 +95,36 @@ Layer *create_layer(Context *env, char *
+         end_file_ptr = file_ptr; 
+       }
+     }
+-    nlayer = new V4lGrabber();
+-    if(! ((V4lGrabber*)nlayer)->init( env, (int)w, (int)h) ) {
+-      error("failed initialization of layer %s for %s", nlayer->name, file_ptr);
+-      delete nlayer; return NULL;
++    nlayer = new V4l2Grabber();
++    if(! ((V4l2Grabber*)nlayer)->init( env, (int)w, (int)h) ) {
++    	error("failed initialization of layer %s for %s", nlayer->name, file_ptr);
++	delete nlayer; return NULL;
+     }
+     if(nlayer->open(file_ptr)) {
+-        notice("v4l opened");
++        notice("v4l2 opened");
+     //  ((V4lGrabber*)nlayer)->init_width = w;
+     //  ((V4lGrabber*)nlayer)->init_heigth = h;
+     } else {
+-      error("create_layer : V4L open failed");
++      error("create_layer : V4L2 open failed");
+       delete nlayer; nlayer = NULL;
+     }
++
++    if (nlayer == NULL) {
++	nlayer = new V4lGrabber();
++	if(! ((V4lGrabber*)nlayer)->init( env, (int)w, (int)h) ) {
++      		error("failed initialization of layer %s for %s", nlayer->name, file_ptr);
++		delete nlayer; return NULL;
++	}
++    	if(nlayer->open(file_ptr)) {
++        	notice("v4l opened");
++	    //  ((V4lGrabber*)nlayer)->init_width = w;
++	    //  ((V4lGrabber*)nlayer)->init_heigth = h;
++	    } else {
++	      error("create_layer : V4L open failed");
++	      delete nlayer; nlayer = NULL;
++	    }
++    }
++
+ #else
+     error("Video4Linux layer support not compiled");
+     act("can't load %s",file_ptr);
+--- freej-0.9/src/Makefile.am.v4l2	2007-09-01 20:21:16.000000000 +0200
++++ freej-0.9/src/Makefile.am	2007-10-25 14:08:28.000000000 +0200
+@@ -48,6 +48,8 @@ freej_SOURCES = \
+ \
+ 	v4l_layer.cpp tvfreq.c	\
+ 	v4l_layer_js.cpp \
++	v4l2_layer.cpp \
++	v4l2_layer_js.cpp \
+ 	video_layer.cpp	\
+ 	video_layer_js.cpp \
+ 	image_layer.cpp \
+--- freej-0.9/src/v4l2_layer.cpp.v4l2	2007-10-25 14:08:28.000000000 +0200
++++ freej-0.9/src/v4l2_layer.cpp	2007-10-25 14:17:03.000000000 +0200
+@@ -0,0 +1,407 @@
++/*
++ *  V4L2 support for Freej
++ *  (c) Copyright 2001-2002 Denis Rojo aka jaromil <jaromil@dyne.org>
++ *                     2007 Arnaud Patard <apatard@mandriva.com>
++ *
++ * This source code is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Public License as published
++ * by the Free Software Foundation; either version 2 of the License,
++ * or (at your option) any later version.
++ *
++ * This source code is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * Please refer to the GNU Public License for more details.
++ *
++ * You should have received a copy of the GNU Public License along with
++ * this source code; if not, write to:
++ * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ *
++ */
++
++#include <config.h>
++
++#ifdef WITH_V4L
++
++#include <iostream>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <errno.h>
++
++#include <ccvt.h>
++#include <v4l2_layer.h>
++#include <tvfreq.h>
++#include <jutils.h>
++
++#include <jsparser_data.h>
++
++static inline __u32 try_video_palette(int dev, struct v4l2_format *fmt, __u32 pal)
++{
++  int res;
++  __u32 palette;
++
++  fmt->fmt.pix.pixelformat = pal;
++  res = ioctl(dev, VIDIOC_S_FMT, fmt);
++  if (res < 0) {
++    act("v4l2: palette %u not supported for grabbing, res: %i(%d) got instead: %u", pal, res, errno, fmt->fmt.pix.pixelformat);
++    palette = 0;
++  }
++  else {
++    act("v4l2: palette ok: %u", pal);
++    palette = fmt->fmt.pix.pixelformat;
++  }
++  return palette;
++}
++
++V4l2Grabber::V4l2Grabber() : Layer() {
++  dev = -1;
++  rgb_surface = NULL;
++  buffer = NULL;
++  have_tuner=false;
++  width = 320;
++  height = 240;
++  set_name("V4L2");
++  jsclass = &v4l2_layer_class;
++}
++
++V4l2Grabber::~V4l2Grabber() {
++  func("%s %s", __FILE__, __FUNCTION__);
++  close();
++}
++
++void V4l2Grabber::print_err(char *ioctl, int res) {
++       error("error in ioctl %s: (%i)", ioctl, res);
++       error("ERR %d %s dev: %i", errno, strerror(errno), dev);
++}
++
++void V4l2Grabber::close() {
++  int i, res, type;
++
++  func("%s %s", __FILE__, __FUNCTION__);
++
++  if (dev > 0) {
++     notice("Closing video4linux grabber layer");
++
++     type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++     res = ioctl(dev, VIDIOC_STREAMOFF, &type);
++     if (res < 0) {
++       print_err("VIDIOC_STREAMOFF", res);
++     }
++  }
++
++  for (i = 0; i < BUF_COUNT; i++)
++	  munmap (buffers[i].start, buffers[i].length);
++
++  if(dev>0) {
++    act("closing video4linux device %u",dev);
++    ::close(dev);
++  }
++
++  if(rgb_surface) jfree(rgb_surface);
++
++}
++
++bool V4l2Grabber::open(char *file) {
++  int counter, res, type;
++  char *capabilities[] = {
++    "VID_TYPE_CAPTURE          can capture to memory",
++    "VID_TYPE_TUNER            has a tuner of some form",
++    "VID_TYPE_TELETEXT         has teletext capability",
++    "VID_TYPE_OVERLAY          can overlay its image to video",
++    "VID_TYPE_CHROMAKEY        overlay is chromakeyed",
++    "VID_TYPE_CLIPPING         overlay clipping supported",
++    "VID_TYPE_FRAMERAM         overlay overwrites video memory",
++    "VID_TYPE_SCALES           supports image scaling",
++    "VID_TYPE_MONOCHROME       image capture is grey scale only",
++    "VID_TYPE_SUBCAPTURE       capture can be of only part of the image"
++  };
++  __u32 formats[] = { V4L2_PIX_FMT_RGB32, V4L2_PIX_FMT_RGB32, V4L2_PIX_FMT_YUV422P,
++                      V4L2_PIX_FMT_YVU420, V4L2_PIX_FMT_YUYV
++                    };
++
++  func("%s %s detect()", __FILE__, __FUNCTION__);
++
++  if (-1 == (dev = ::open(file,O_RDWR|O_NONBLOCK))) {
++    error("open capture device %s: %s", file, strerror(errno));
++    return false;
++  } else {
++    ::close(dev);
++    dev = ::open(file,O_RDWR);
++  }
++
++  res = ioctl(dev, VIDIOC_QUERYCAP, &grab_cap);
++  if(res < 0) {
++    print_err("VIDIOC_QUERYCAP", res);
++    return false;
++  }
++
++  if(get_debug() > 0) {
++    notice("Device detected is %s", file);
++    act("%s", grab_cap.card);
++    act("Video capabilities:%x", grab_cap.capabilities);
++  }
++
++  if(grab_cap.capabilities & V4L2_CAP_TUNER)
++    /* if the device does'nt has any tuner, so we avoid some ioctl
++       this should be a fix for many webcams, thanks to Ben Wilson */
++    have_tuner = 1;
++
++  if(!(grab_cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
++	  error("No V4L2_CAP_VIDEO_CAPTURE capability\n");
++	  return false;
++  }
++
++  if(!(grab_cap.capabilities & V4L2_CAP_STREAMING)) {
++	  error("No V4L2_CAP_STREAMING)) capability\n");
++	  return false;
++  }
++
++  memset(&fmt, 0, sizeof(struct v4l2_format));
++  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++  if (-1 == ioctl(dev, VIDIOC_G_FMT, &fmt)) {
++    print_err("VIDIOC_G_FMT", res);
++    return false;
++  }
++
++  notice("v4l2: probing color formats");
++
++  palette = 0;
++  for (counter = 0 ; !palette && counter < sizeof(formats)/sizeof(__u32) ; counter++)
++	  palette = try_video_palette(dev, &fmt, formats[counter]);
++
++  if(palette == 0) {
++    error("device %s doesn't supports grabbing any desired palette", file);
++    return false;
++  }
++
++  notice("v4l2: probing for size");
++
++  fmt.fmt.pix.height = height;
++  fmt.fmt.pix.width = width;
++  res=ioctl(dev, VIDIOC_S_FMT, &fmt);
++  if ( res<0 ) {
++    error("v4l2: size %ix%i not supported res: %i. Got %ux%u", width, height, res, fmt.fmt.pix.width, fmt.fmt.pix.height);
++    return false;
++  }
++
++  errno=0;
++  memset(&reqbuf, 0, sizeof(struct v4l2_requestbuffers));
++  reqbuf.count = BUF_COUNT;
++  reqbuf.type  = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++  reqbuf.memory = V4L2_MEMORY_MMAP;
++  res = ioctl(dev, VIDIOC_REQBUFS, &reqbuf);
++  if (res < 0) {
++    print_err("VIDIOC_REQBUFS", res);
++    return false;
++  }
++
++  for (counter = 0; counter < reqbuf.count; counter++) {
++	  memset(&buf, 0, sizeof(struct v4l2_buffer));
++	  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++	  buf.memory = V4L2_MEMORY_MMAP;
++	  buf.index = counter;
++	  res = ioctl(dev, VIDIOC_QUERYBUF, &buf);
++	  if (res < 0) {
++    		  print_err("VIDIOC_REQBUFS", res);
++		  return false;
++	  }
++	  buffers[counter].length = buf.length;
++	  buffers[counter].start = mmap (0, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, dev, buf.m.offset);
++	  if (MAP_FAILED == buffers[counter].start) {
++		  perror("mmap failed");
++		  return false;
++	  }
++  }
++  set_filename(file);
++
++  /* set image source and TV norm */
++  grab_chan.channel = input = (channels>1) ? 1 : 0;
++
++  if(have_tuner) { /* does this only if the device has a tuner */
++    _band = 5; /* default band is europe west */
++    _freq = 0;
++    /* resets CHAN */
++    if (-1 == ioctl(dev, VIDIOCGCHAN, &grab_chan)) {
++      print_err("VIDIOCGCHAN", res);
++      return false;
++    }
++
++    if (-1 == ioctl(dev, VIDIOCSCHAN, &grab_chan)) {
++      print_err("VIDIOCSCHAN", res);
++      return false;
++    }
++
++    /* get/set TUNER settings */
++    if (-1 == ioctl(dev, VIDIOCGTUNER, &grab_tuner)) {
++      print_err("VIDIOCGTUNER", res);
++      return false;
++    }
++  }
++
++  rgb_surface = malloc(geo.size);
++
++  notice("V4L2 layer :: w[%u] h[%u] bpp[%u] size[%u]",
++	 geo.w,geo.h,geo.bpp,geo.size,geo);
++
++  type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++  res = ioctl(dev, VIDIOC_STREAMON, &type);
++  if (res < 0) {
++    print_err("VIDIOC_STREAMON", res);
++    return false;
++  }
++
++  return true;
++}
++
++bool V4l2Grabber::init(Context *env, int width, int height) {
++    func("%s %s", __FILE__, __FUNCTION__);
++    this->width = width;
++    this->height = height;
++    _init(width,height);
++    return true;
++}
++
++bool V4l2Grabber::init(Context *env) {
++  func("%s %s", __FILE__, __FUNCTION__);
++  return init(env, env->screen->w, env->screen->h);
++}
++
++void V4l2Grabber::set_chan(int ch) {
++
++  grab_chan.channel = input = ch;
++
++  if (-1 == ioctl(dev,VIDIOCGCHAN,&grab_chan))
++    error("error in ioctl VIDIOCGCHAN ");
++
++  grab_chan.norm = VIDEO_MODE_PAL;
++
++  if (-1 == ioctl(dev,VIDIOCSCHAN,&grab_chan))
++    error("error in ioctl VIDIOCSCHAN ");
++
++  act("V4L: input chan %u %s",ch,grab_chan.name);
++  show_osd();
++}
++
++void V4l2Grabber::set_band(int b) {
++  _band = b;
++  chanlist = chanlists[b].list;
++  if(_freq>chanlists[b].count) _freq = chanlists[b].count;
++  act("V4L: frequency table %u %s [%u]",b,chanlists[b].name,chanlists[b].count);
++  show_osd();
++}
++
++void V4l2Grabber::set_freq(int f) {
++  _freq = f;
++
++  unsigned long frequency = chanlist[f].freq*16/1000;
++  float ffreq = (float) frequency/16;
++
++  func("V4L: set frequency %u %.3f",frequency,ffreq);
++
++  //  lock_feed();
++  if (-1 == ioctl(dev,VIDIOCSFREQ,&frequency))
++    error("error in ioctl VIDIOCSFREQ ");
++  //  unlock_feed();
++  act("V4L: frequency %s %.3f Mhz (%s)",chanlist[f].name,ffreq,chanlists[_band].name);
++  show_osd();
++}
++
++
++/* here are defined the keys for this layer */
++bool V4l2Grabber::keypress(int key) {
++  int res = 1;
++
++  switch(key) {
++  case 'k':
++    if(input<channels)
++      set_chan(input+1);
++    break;
++
++  case 'm':
++    if(input>0)
++      set_chan(input-1);
++    break;
++
++    if(have_tuner) {
++    case 'j':
++      if(_band<bandcount)
++	set_band(_band+1);
++      break;
++
++    case 'n':
++      if(_band>0)
++	set_band(_band-1);
++      break;
++
++    case 'h':
++      if(_freq<chanlists[_band].count)
++	set_freq(_freq+1);
++      else
++	set_freq(0);
++      break;
++
++    case 'b':
++      if(_freq>0)
++	set_freq(_freq-1);
++      else
++	set_freq(chanlists[_band].count);
++      break;
++
++    } /* if (have_tuner) */
++
++  default:
++    res = 0;
++  }
++  return res;
++}
++
++void *V4l2Grabber::get_buffer() {
++  return(rgb_surface);
++}
++
++void *V4l2Grabber::feed() {
++
++  memset(&buf, 0, sizeof(struct v4l2_buffer));
++  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++  buf.memory = V4L2_MEMORY_MMAP;
++
++  /* FIXME : Should check return values */
++  ioctl(dev, VIDIOC_DQBUF, &buf);
++
++  switch(palette) {
++#if defined HAVE_MMX && !defined HAVE_64BIT
++	case V4L2_PIX_FMT_YUV422P:
++	case V4L2_PIX_FMT_YUYV:
++    		ccvt_yuyv_bgr32(geo.w, geo.h, buffers[buf.index].start, rgb_surface);
++		break;
++#endif
++  	case V4L2_PIX_FMT_YVU420:
++		ccvt_420p_bgr32(width, height, buffers[buf.index].start, rgb_surface);
++		break;
++
++	case V4L2_PIX_FMT_BGR32:
++		memcpy(rgb_surface, buffers[buf.index].start, geo.size);
++		break;
++
++	case V4L2_PIX_FMT_BGR24:
++		ccvt_rgb24_bgr32(width, height, buffers[buf.index].start, rgb_surface);
++		break;
++
++	default:
++		error("video palette %i for layer %s %s not supported",
++				palette, get_name(),get_filename());
++		break;
++  }
++
++  /* FIXME : Should check return values */
++  ioctl(dev, VIDIOC_QBUF, &buf);
++
++  return rgb_surface;
++}
++
++#endif
+--- freej-0.9/src/v4l2_layer_js.cpp.v4l2	2007-10-25 14:08:28.000000000 +0200
++++ freej-0.9/src/v4l2_layer_js.cpp	2007-10-25 14:08:28.000000000 +0200
+@@ -0,0 +1,84 @@
++/*  FreeJ
++ *  (c) Copyright 2001-2005 Denis Roio aka jaromil <jaromil@dyne.org>
++ *
++ * This source code is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Public License as published
++ * by the Free Software Foundation; either version 2 of the License,
++ * or (at your option) any later version.
++ *
++ * This source code is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * Please refer to the GNU Public License for more details.
++ *
++ * You should have received a copy of the GNU Public License along with
++ * this source code; if not, write to:
++ * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ *
++ * "$Id: freej.cpp 654 2005-08-18 16:52:47Z jaromil $"
++ *
++ */
++
++#include <callbacks_js.h>
++#include <jsparser_data.h>
++#include <config.h>
++
++#ifdef WITH_V4L
++#include <v4l2_layer.h>
++
++DECLARE_CLASS("Cam2Layer",v4l2_layer_class,v4l2_layer_constructor);
++
++////////////////////////////////
++// Video4Linux Layer methods
++JSFunctionSpec v4l2_layer_methods[] = {
++  LAYER_METHODS  ,
++  ENTRY_METHODS  ,
++  //    name		native		        nargs
++  {     "chan",         v4l2_layer_chan,         1},
++  {     "band",         v4l2_layer_band,         1},
++  {     "freq",         v4l2_layer_freq,         1},
++  {0}
++};
++
++JS_CONSTRUCTOR("V4l2Layer", v4l2_layer_constructor, V4l2Grabber);
++JS(v4l2_layer_chan) {
++  func("%u:%s:%s",__LINE__,__FILE__,__FUNCTION__);
++
++  if(argc<1) return JS_FALSE;
++
++  GET_LAYER(V4l2Grabber);
++
++  int chan=JSVAL_TO_INT(argv[0]);
++  lay->set_chan(chan);
++
++  return JS_TRUE;
++}
++JS(v4l2_layer_freq) {
++  func("%u:%s:%s",__LINE__,__FILE__,__FUNCTION__);
++
++  if(argc<1) return JS_FALSE;
++
++  GET_LAYER(V4l2Grabber);
++
++  int freq=JSVAL_TO_INT(argv[0]);
++  lay->set_freq(freq);
++
++  return JS_TRUE;
++}
++JS(v4l2_layer_band) {
++  func("%u:%s:%s",__LINE__,__FILE__,__FUNCTION__);
++
++  if(argc<1) return JS_FALSE;
++
++  GET_LAYER(V4l2Grabber);
++
++  int band=JSVAL_TO_INT(argv[0]);
++  lay->set_band(band);
++
++  return JS_TRUE;
++}
++#endif
++
++
++
++
+--- freej-0.9/src/v4l_layer.cpp.v4l2	2007-09-01 20:21:17.000000000 +0200
++++ freej-0.9/src/v4l_layer.cpp	2007-10-25 14:08:28.000000000 +0200
+@@ -419,7 +419,7 @@ void *V4lGrabber::feed() {
+   else
+ #endif
+   if(palette == VIDEO_PALETTE_YUV420P) 
+-    ccvt_420p_rgb32(width, height, &buffer[grab_map.offsets[ok_frame]], rgb_surface);
++    ccvt_420p_bgr32(width, height, &buffer[grab_map.offsets[ok_frame]], rgb_surface);
+ 
+   else if(palette == VIDEO_PALETTE_RGB32) 
+     memcpy(rgb_surface,&buffer[grab_map.offsets[ok_frame]],geo.size);
+--- freej-0.9/src/jsparser.cpp.v4l2	2007-09-01 20:21:16.000000000 +0200
++++ freej-0.9/src/jsparser.cpp	2007-10-25 14:08:28.000000000 +0200
+@@ -150,6 +150,10 @@ void JsParser::init() {
+ 		   v4l_layer_class,
+ 		   v4l_layer_constructor,
+ 		   v4l_layer_methods);
++    REGISTER_CLASS("Cam2Layer",
++		   v4l2_layer_class,
++		   v4l2_layer_constructor,
++		   v4l2_layer_methods);
+ #endif
+ 
+ #ifdef WITH_AVCODEC
