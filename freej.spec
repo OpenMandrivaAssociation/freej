@@ -5,7 +5,7 @@ Summary:        Vision mixer
 
 Group:          Video
 License:        GPL
-URL:            http://freej.org/
+URL:            https://freej.org/
 Source0:        ftp://ftp.dyne.org/freej/releases/%{name}-%{version}.tar.gz
 Source1:	ipernav.png
 Patch0:		freej-0.9-slang.patch
